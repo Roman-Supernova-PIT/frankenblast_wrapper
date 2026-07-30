@@ -31,47 +31,17 @@ os.environ["SBIPP_TRAINING_ROOT"] = (
 )
 os.environ["SED_OUTPUT_ROOT"] = "/Users/hfausey/frankenblast_data/data/sed_output"
 
-
-import pandas as pd
-from astropy.cosmology import WMAP9 as cosmo
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from frankenblast.classes import Transient, Host, Filter
-import glob
-import pathlib
-from urllib.error import HTTPError
-from mpire import WorkerPool
-import requests
-import sys
+from frankenblast.classes import Transient, Host
 from sedpy.observate import load_filters
-from frankenblast.fit_host_sed import (
-    run_training_set,
-    build_obs,
-    build_model,
-    fit_sbi_pp,
-    build_model_nonparam,
-)
-import prospect.io.read_results as reader
-from prospect.sources import FastStepBasis
-from prospect.utils.plotting import quantile
-import sedpy
-from frankenblast.postprocess_sbi import save_all as psbi_save
-from frankenblast.new_roman_lsst_fit_host_sed import fit_host, maggies_to_asinh
-from prospect.plotting.utils import sample_posterior
-import corner as triangle
-from prospect.io.read_results import traceplot, subcorner
-import matplotlib as mpl
-import matplotlib.ticker as mticker
+from frankenblast.new_roman_lsst_fit_host_sed import fit_host #, maggies_to_asinh
 import time
-from frankenblast.mwebv_host import get_mwebv
 
 import fsps
 import prospect.sources.ssp_basis as ssp_basis
 
-from my_files import sim_photometry
 
 ssp_basis.fsps = fsps
 
@@ -267,7 +237,7 @@ def run(galID, field, RA, Dec, magnitudes, magerrs, LSST_data, subaru_data, reds
             filter_names = frankenblast_roman_only_names_wide
 
             if redshift == None:
-                train_fname = "roman_RZYJH"
+                train_fname = "simple_roman_RZYJH"
             elif redshift != None:
                 raise Exception("Model currently unavailable")
             else:
@@ -279,7 +249,7 @@ def run(galID, field, RA, Dec, magnitudes, magerrs, LSST_data, subaru_data, reds
             filter_names = frankenblast_roman_only_names_deep
 
             if redshift == None:
-                train_fname = "roman_ZYJHF"
+                train_fname = "simple_roman_ZYJHF"
             elif redshift != None:
                 raise Exception("Model currently unavailable")
             else:
@@ -290,7 +260,7 @@ def run(galID, field, RA, Dec, magnitudes, magerrs, LSST_data, subaru_data, reds
 
     else:
         raise Exception("LSST/Subaru/Roman data error")
-
+    
     # Create transient
     transient_class = Transient(
         name=str(galID),
@@ -363,7 +333,6 @@ def run(galID, field, RA, Dec, magnitudes, magerrs, LSST_data, subaru_data, reds
         fname=train_fname,
         all_filters=trained_filters,
         extinction_correct=False,
-        mode="test",
         sbipp=True,
         aperture_type="global",
         aperture=transient_class.global_apertures,
