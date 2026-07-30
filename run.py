@@ -18,7 +18,7 @@ import h5py
 
 import run_frankenblast_all
 import IO_functions as IO
-import plot_sed
+import error_estimation
 
 os.environ["SPS_HOME"] = "/Users/hfausey/fsps/fsps"
 os.environ["SBIPP_ROOT"] = "/Users/hfausey/frankenblast_data/data/SBI"
@@ -26,7 +26,7 @@ os.environ["SBIPP_PHOT_ROOT"] = "/Users/hfausey/frankenblast_data/data/sbipp_pho
 os.environ["SBIPP_TRAINING_ROOT"] = (
     "/Users/hfausey/frankenblast_data/data/sbi_training_sets"
 )
-os.environ["SED_OUTPUT_ROOT"] = "/Users/hfausey/frankenblast_data/data/sed_output"
+os.environ["SED_OUTPUT_ROOT"] = "/Users/hfausey/frankenblast_data/results/roman_deep_simple"
 import fsps
 
 # from run_prospector import get_host_properties
@@ -66,12 +66,11 @@ def fit_one_galaxy(
 
     # pull simulated data
 
+    # This is going to be used for saving/loading info for each galaxy
     root = os.environ["SED_OUTPUT_ROOT"] + f"/{ID}/"
     hfile = os.environ["SED_OUTPUT_ROOT"] + f"/{ID}/{ID}_global.h5"
-
-    # NEED AGN INFO FROM PULL SIMS OR EQUIVALENT
-
-    # ID WILL PROBABLY BE REPLACED WITH PROVENANCE ID IN THE PULL SIMS OR EQUIVALENT FUNCTION
+    
+    #Pull simulated data for now - THIS WILL NEED TO BE CHANGED
     (
         galID,
         RA,
@@ -87,26 +86,19 @@ def fit_one_galaxy(
         ID, field, sim_testing_set, provenance_id, diaobject_id, test_file=test_file
     )
 
+    # NEED AGN INFO FROM PULL SIMS OR EQUIVALENT
+
+    # ID WILL PROBABLY BE REPLACED WITH PROVENANCE ID IN THE PULL SIMS OR EQUIVALENT FUNCTION
+
     if not os.path.exists(hfile):
-        (
-            galID,
-            RA,
-            Dec,
-            filters,
-            magnitudes,
-            magerrs,
-            LSST_data,
-            subaru_data,
-            redshift,
-            AGN_info,
-        ) = pull_sims(
-            ID, field, sim_testing_set, provenance_id, diaobject_id, test_file=test_file
-        )
+        #If we don't already have it, make the directory to save the info
+        os.makedirs(root, exist_ok=True)
 
         # if the redshift comes back with a value, it means we have a known redshift and need to change the redshift_prior field
         if not (redshift is None):
             redshift_prior = None
-
+        
+        #Calls the code that preps and then runs frankenblast
         run_frankenblast_all.run(
             galID, field, RA, Dec, magnitudes, magerrs, LSST_data, subaru_data, redshift
         )
@@ -115,13 +107,15 @@ def fit_one_galaxy(
         true_theta = test_theta[ID]
     else:
         # NEED TO SET UP PULLING THE OU INPUTS
-        true_theta = None
-        print("skipping")
-        # raise Exception("Not supposed to be here yet")
+        row = data[data["galID"] == galID]
 
-    output_data = plot_sed.plot_frankenblast_sed(
-        ID, root, hfile, sim_testing_set, true_theta=true_theta
-    )
+        SFRtrue = row["sSFR"].iloc[0]
+        ztrue = row["redshift"].iloc[0]
+        logMtrue = row["logMass"].iloc[0]
+        true_theta = np.array([logMtrue, ztrue, SFRtrue])
+
+    #Handle data and errors, but in form that
+    output_data = error_estimation.get_error(galID, hfile, root, sim_testing_set, true_theta)
 
     # Save off the metadata for this specific SN+galaxy+photometry+fit+version+etc.
     # NEED TO SET UP FRAMEWORK HERE FOR ASDF/PARQUET SAVE
@@ -173,7 +167,7 @@ if __name__ == "__main__":
     sim_testing_set = False
     # Change this depending on where you are pulling the data from
     test_file = os.environ["SBIPP_PHOT_ROOT"] + "/sbi_phot_subaru_deep_testing_set.h5"
-    filetype = "asdf"
+    filetype = "parquet"
     cpu_num = 6
     # root = "/Users/hfausey/frankenblast_data/results/lsst_deep/"
 
@@ -222,18 +216,19 @@ if __name__ == "__main__":
 
     # FOR SFH
     #  1 is tau
-    #  2 is constant sfh
-    #  3 is delayed-tau
-    #  4 is non-parametric
+    #  2 is constant sfh - no longer supported
+    #  3 is non-parametric
+    #  4 is delayed-tau
+    
 
-    # For frankenblast, right now at least, sfh is non-parametric
+    # Currently using delayed-tau
 
     sfr_model = 4
 
     # FOR GAL AGE MODEL
     # Frankenblast is going to almost always be MWA
 
-    gal_age_model = "MWA"
+    gal_age_model = "tage"
 
     # AGN INFO will depend
     # could potentially swap between using and not using agn parameters, but will
