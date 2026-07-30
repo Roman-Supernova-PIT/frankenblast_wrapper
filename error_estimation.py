@@ -8,7 +8,7 @@ Created on Thu Jul 23 10:44:58 2026
 
 import numpy as np
 from prospect.io import read_results as reader
-from frankenblast_model_simple import build_model
+from frankenblast.frankenblast_model_simple import build_model
 import arviz as avz
 import plotting
 
