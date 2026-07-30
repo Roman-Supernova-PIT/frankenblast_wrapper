@@ -180,6 +180,7 @@ if __name__ == "__main__":
         test_file = "./my_files/data/compiled_catalog.csv"
         data = pd.read_csv(test_file)
         galaxy_ids = data["galID"].tolist()
+        galaxy_ids = galaxy_ids[460:]
         test_theta = None
 
     elif sim_testing_set:
