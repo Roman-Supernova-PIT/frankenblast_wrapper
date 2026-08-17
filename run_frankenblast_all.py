@@ -14,7 +14,7 @@ import importlib
 
 import dustmaps.sfd
 
-dustmaps.sfd.fetch()
+#dustmaps.sfd.fetch()
 
 import os
 
@@ -22,7 +22,7 @@ import os
 
 ##All of these are going to be changed once everything ends up...well...whereever
 # its going
-
+'''
 os.environ["SPS_HOME"] = "/Users/hfausey/fsps/fsps"
 os.environ["SBIPP_ROOT"] = "/Users/hfausey/frankenblast_data/data/SBI"
 os.environ["SBIPP_PHOT_ROOT"] = "/Users/hfausey/frankenblast_data/data/sbipp_phot"
@@ -30,7 +30,7 @@ os.environ["SBIPP_TRAINING_ROOT"] = (
     "/Users/hfausey/frankenblast_data/data/sbi_training_sets"
 )
 os.environ["SED_OUTPUT_ROOT"] = "/Users/hfausey/frankenblast_data/data/sed_output"
-
+'''
 import numpy as np
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -209,7 +209,7 @@ def run(galID, field, RA, Dec, magnitudes, magerrs, LSST_data, subaru_data, reds
             filter_names = subaru_names_wide
 
             if redshift == None:
-                train_fname = "subaru_wide"
+                train_fname = "simple_subaru_wide"
             elif redshift != None:
                 raise Exception("Model currently unavailable")
             else:
@@ -221,7 +221,7 @@ def run(galID, field, RA, Dec, magnitudes, magerrs, LSST_data, subaru_data, reds
             filter_names = subaru_names_deep
 
             if redshift == None:
-                train_fname = "subaru_deep"
+                train_fname = "simple_subaru_deep"
 
             elif redshift != None:
                 raise Exception("Model currently unavailable")
@@ -287,6 +287,11 @@ def run(galID, field, RA, Dec, magnitudes, magerrs, LSST_data, subaru_data, reds
     # it is unlikely and may need to be checked
     if not (mask.all() == True):
         print("Be careful, some filters are nan, does this seem right?")
+        '''
+        filter_names = filter_names[mask]
+        magnitudes = magnitudes[mask]
+        magerrs = magerrs[mask]
+        '''
 
     all_phot = []
 
@@ -312,6 +317,7 @@ def run(galID, field, RA, Dec, magnitudes, magerrs, LSST_data, subaru_data, reds
     SBIPP_PHOT_ROOT = os.environ["SBIPP_PHOT_ROOT"]
     SBIPP_TRAINING_ROOT = os.environ["SBIPP_TRAINING_ROOT"]
     SED_OUTPUT_ROOT = os.environ["SED_OUTPUT_ROOT"]
+    
 
     # Set up SBI params
     sbi_params = {
@@ -325,7 +331,6 @@ def run(galID, field, RA, Dec, magnitudes, magerrs, LSST_data, subaru_data, reds
 
     # Run SBI
     start = time.time()
-
     # This line below actually runs frankenblast
     flag = fit_host(
         transient_class,
@@ -345,3 +350,4 @@ def run(galID, field, RA, Dec, magnitudes, magerrs, LSST_data, subaru_data, reds
 
     print("It took", length / 60, "minutes to run SBIPP!")
     print("Host SED fit completed.")
+    
