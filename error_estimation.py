@@ -11,23 +11,25 @@ from prospect.io import read_results as reader
 from frankenblast.frankenblast_model_simple import build_model
 import arviz as avz
 import plotting
+import pickle
+import torch
 
 
-def get_error(galID, hfile, hfile_root, sim_data, true_theta):
+def get_error(galID, hfile, hfile_root, sim_data, true_theta, T = 1):
     # Get the associted uncertainties based on the psterior chains
     
     # Reload data
     out, out_obs, out_model = reader.results_from(hfile)
 
-    chain = out["chain"]
+    full_chain = out["chain"]
 
     model = build_model()
     
-    sfr_chain = np.zeros(chain.shape[0])
-    logsSFR_chain = np.zeros(chain.shape[0])
+    sfr_chain = np.zeros(full_chain.shape[0])
+    logsSFR_chain = np.zeros(full_chain.shape[0])
     
     #Import the posterior chains of all parameters
-    for i, th in enumerate(chain):
+    for i, th in enumerate(full_chain):
         model.set_parameters(th)
     
         tau = model.params["tau"][0]
@@ -92,17 +94,19 @@ def get_error(galID, hfile, hfile_root, sim_data, true_theta):
                 
                 sfh *= mass / norm
                                 
-                SFR_true = sfh/(1e9) #To get into Mdot per year
+                SFR_true = sfh[-1]/(1e9) #To get into Mdot per year
                 
                 logsSFR_true = np.log10(SFR_true/mass)
                 
-                truths.append(SFR_true)
+                #truths.append(SFR_true)
     
-                truths.append(logsSFR_true)
+                #truths.append(logsSFR_true)
+                
+                print(truths)
     
                 truths = np.array(truths)
                 
-                np.savetxt(hfile_root + "truth_vals.txt", (truths), delimiter=" ")
+                
         
         else:
             #If from OU, truths are log(M), redshift, and log(sSFR)[m-dot/Gyr] in that order
@@ -142,13 +146,16 @@ def get_error(galID, hfile, hfile_root, sim_data, true_theta):
     #Save relevant chains and get error, but for things we actually want 
      #eg Av instead of dust2
     special_params = np.array(["logmass", "zred", "logzsol", "dust2", "tau", "tage", "SFR", "logsSFR"])
-
+    truths_organized = []
     spec_chain_list = []
     spec_labels = []
     param_estimates = []
+    
+    #chain_inflated = temp_scaling(3.61, full_chain, posterior_file, photometry, uncertainties)
 
     # Get parameters and 1-sigma uncertainty (by percentile currently)
     for p in special_params:
+        
         if p in out["theta_labels"]:
 
             idx = out["theta_labels"].index(p)
@@ -159,32 +166,44 @@ def get_error(galID, hfile, hfile_root, sim_data, true_theta):
                 spec_chain_list.append(out["chain"][:, idx] * 1.086)
                 chain = out["chain"][:, idx] * 1.086
                 spec_labels.append("Av")
+                truths_organized.append(truths[idx]*1.086)
             #Otherwise just add to proper column    
             else:
                 spec_chain_list.append(out["chain"][:, idx])
                 chain = out["chain"][:, idx]
                 spec_labels.append(p)
+                truths_organized.append(truths[idx])
         #Other special cases
         elif p == "SFR":
             spec_chain_list.append(sfr_chain)
             chain = sfr_chain
             spec_labels.append("SFR")
+            truths_organized.append(SFR_true)
         elif p == "logsSFR":
             spec_chain_list.append(logsSFR_chain)
             chain = logsSFR_chain
             spec_labels.append("logsSFR")
-            
+            truths_organized.append(logsSFR_true)
+        
         #Only adding error floor to mass for now
         median = np.median(chain)
+        
+        inflated_chain=covariance_scaling(T, median, chain)
+        
+        '''
         #Highest density interval is probably the best for SBI/posterior
          #sampling, especially when it is not necessarity gaussian
         low, high = avz.hdi(chain, 0.68)
-            
+        '''   
+        ##For temp scaling
+        low, high = avz.hdi(inflated_chain, 0.68)
         #THIS IS WHERE TO PUT THE NEW FUNCTIONS WHEN CALIBRATING UNCERTAINTIES 
         err_plus, err_minus = (high-median), (median-low) 
-
+        
 
         param_estimates.append([median, err_plus, err_minus])
+    
+    np.savetxt(hfile_root + "truth_vals.txt", (truths_organized), delimiter=" ")
     
     #The name of the keys in the save file (in same order as the special params array)
     associated_keys = np.array(["logM", "redshift", "logZ", "tau", "Av", "age", "SFR", "logsSFR"])
@@ -198,7 +217,7 @@ def get_error(galID, hfile, hfile_root, sim_data, true_theta):
         ) = param_estimates[i]
     
     #Do some extra plotting here (SEDs and corner plots)
-    plotting.corner_plot(galID, spec_chain_list, spec_labels, true_theta, hfile_root)
+    plotting.corner_plot(galID, spec_chain_list, spec_labels, truths_organized, hfile_root)
     
     return output_data
 
@@ -213,6 +232,17 @@ def error_floor(median, high, low):
     err_minus = np.sqrt(err_measured_low**2 + error_floor**2)
     
     return err_plus, err_minus
+
+
+def covariance_scaling(T, median, chain):
     
-        
-            
+    inflated_chain = median + np.sqrt(T)*(chain-median)
+    
+    return inflated_chain
+
+    
+    
+    
+    
+    
+               
