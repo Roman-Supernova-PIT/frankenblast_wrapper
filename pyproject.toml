@@ -1,0 +1,41 @@
+[project]
+name = "frankenblast_wrapper"
+version = "0.1.0"
+description = "Runs frankenblast to obtain SNe host galaxy mass and other properties"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "Roman Supernove Project Infrastructure Team"}]
+maintainers = [
+  {name = "Hallie M Fausey", email = "hallie_fausey@baylor.edu"}
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python"
+]
+
+dependencies = [
+  "matplotlib",
+  "numpy",
+  "parquet",
+  "pickle",
+  "pandas",
+  "h5py",
+  "frankenblast",
+]
+
+[project.optional-dependencies]
+test = [
+    "TBD"
+]
+docs = [
+    "TBD"
+]
+
+[project.urls]
+documentation = "TBD"
+repository = "https://github.com/Roman-Supernova-PIT"
+changelog = "TBD"
+
+[project.scripts]
+frankenblast_wrapper = "TBD"
