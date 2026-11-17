@@ -37,7 +37,7 @@ def main():
     parser.add_argument(
         "--filetype",
         default="parquet",
-        choices=["parquet", "csv"],
+        choices=["parquet", "asdf"],
     )
      
     args = parser.parse_args()
